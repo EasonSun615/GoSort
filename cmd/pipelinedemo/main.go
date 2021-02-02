@@ -44,7 +44,7 @@ func MergeDemo() {
 
 func main(){
 	const filename = "small.in"
-	const count = 100000000
+	const count = 64
 	f, err := os.Create(filename)
 	if err != nil {
 		panic(err)
@@ -60,7 +60,7 @@ func main(){
 	}
 	defer f.Close()
 	n := 0
-	p := pipeline.ReaderSource(bufio.NewReader(f))
+	p := pipeline.ReaderSource(bufio.NewReader(f), -1)
 	for num := range p {
 		fmt.Println(num)
 		n++

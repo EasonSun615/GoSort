@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"sort"
+	"time"
 )
 
 func ArraySource(a ...int) <-chan int {
@@ -59,16 +60,29 @@ func Merge(in1, in2 <-chan int) <-chan int {
 	return out
 }
 
-func ReaderSource(reader io.Reader) <- chan int {
+func MergeN(in ... <- chan int) <- chan int {
+	if len(in) == 1 {
+		return in[0]
+	}
+	m := len(in) / 2
+	return Merge(MergeN(in[:m]...), MergeN(in[m:]...))
+}
+
+func ReaderSource(reader io.Reader, chunkSize int) <- chan int {
 	out := make(chan int)
 	go func() {
 		buffer := make([]byte, 8)
+		bytesRead := 0
 		for {
 			read, err := reader.Read(buffer)
 			if read > 0 {
 				out <- int(binary.BigEndian.Uint64(buffer))
+				bytesRead += read
 			}
-			if err != nil {
+			if err != nil || (chunkSize != -1 && bytesRead >= chunkSize) {
+				if err != nil {
+					fmt.Println("err:",err, " bytesRead:", bytesRead)
+				}
 				close(out)
 				break
 			}
@@ -89,6 +103,7 @@ func WriterSink(writer io.Writer, in <- chan int) {
 
 func RandomSource(count int) <- chan int {
 	out := make(chan int)
+	rand.Seed(time.Now().Unix())
 	go func() {
 		for i:= 0; i<count; i++ {
 			out <- rand.Intn(200)
