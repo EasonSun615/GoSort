@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+var startTime time.Time
+
+func Init() {
+	startTime = time.Now()
+}
+
 func ArraySource(a ...int) <-chan int {
 	out := make(chan int)
 	go func() {
@@ -21,15 +27,19 @@ func ArraySource(a ...int) <-chan int {
 }
 
 func InMemSort(in <-chan int) <-chan int {
-	out := make(chan int)
+	// 给channel增加buffer, 减少block，增加效率
+	out := make(chan int, 1024)
 	go func() {
 		a := []int{}
 		// Read into memory
 		for v := range in {
 			a = append(a, v)
 		}
+		fmt.Println("Read down: ", time.Now().Sub(startTime))
+
 		// Sort
 		sort.Ints(a)
+		fmt.Println("InMemSort down: ", time.Now().Sub(startTime))
 
 		// Output
 		for _, v := range a {
@@ -41,7 +51,7 @@ func InMemSort(in <-chan int) <-chan int {
 }
 
 func Merge(in1, in2 <-chan int) <-chan int {
-	out := make(chan int)
+	out := make(chan int, 1024)
 	go func() {
 		num1, ok1 := <-in1
 		num2, ok2 := <-in2
@@ -55,6 +65,7 @@ func Merge(in1, in2 <-chan int) <-chan int {
 			}
 		}
 		close(out)
+		fmt.Println("Merge down: ", time.Now().Sub(startTime))
 	}()
 
 	return out
@@ -69,7 +80,7 @@ func MergeN(in ... <- chan int) <- chan int {
 }
 
 func ReaderSource(reader io.Reader, chunkSize int) <- chan int {
-	out := make(chan int)
+	out := make(chan int, 1024)
 	go func() {
 		buffer := make([]byte, 8)
 		bytesRead := 0
@@ -106,7 +117,7 @@ func RandomSource(count int) <- chan int {
 	rand.Seed(time.Now().Unix())
 	go func() {
 		for i:= 0; i<count; i++ {
-			out <- rand.Intn(200)
+			out <- rand.Int()
 		}
 		close(out)
 	}()

@@ -8,21 +8,27 @@ import (
 )
 
 func main() {
-	const infilename string = "small.in"
-	const outfilename string = "small.out"
-	const filesize int = 64
+	const infilename string = "large.in"
+	const outfilename string = "large.out"
+	const filesize int = 800000000
+	if _, err := os.Stat(infilename); err != nil && !os.IsExist(err) {
+		createFile(filesize, infilename)
+	}
+	p := createPipeline(infilename, filesize, 8)
+	writeToFile(p, outfilename)
+	printFile(outfilename)
+}
+
+func createFile(filesize int, filename string) {
 	randSource := pipeline.RandomSource(filesize / 8)
-	file, err := os.Create(infilename)
+	file, err := os.Create(filename)
 	if err != nil {
 		panic(nil)
 	}
 	defer file.Close()
-	pipeline.WriterSink(file, randSource)
-	printFile(infilename)
-	fmt.Println("####################")
-	p := createPipeline(infilename,filesize, 4)
-	writeToFile(p, outfilename)
-	printFile(outfilename)
+	writer := bufio.NewWriter(file)
+	defer writer.Flush()
+	pipeline.WriterSink(writer, randSource)
 }
 
 func printFile(filename string) {
@@ -31,14 +37,9 @@ func printFile(filename string) {
 		panic(err)
 	}
 	defer file.Close()
-	p := pipeline.ReaderSource(file, -1)
-	count := 0
+	p := pipeline.ReaderSource(file, 100)
 	for num := range p {
 		fmt.Println(num)
-		count ++
-		if count > 100 {
-			break
-		}
 	}
 }
 
@@ -61,6 +62,7 @@ func createPipeline(filename string, fileSize, chunkCount int) <-chan int {
 	 */
 	chunkSize := fileSize / chunkCount
 	mergeInputs := []<-chan int{}
+	pipeline.Init()
 	for i := 0; i < chunkCount; i++ {
 		file, err := os.Open(filename)
 		if err != nil {
