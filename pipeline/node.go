@@ -103,6 +103,7 @@ func ReaderSource(reader io.Reader, chunkSize int) <- chan int {
 }
 
 func WriterSink(writer io.Writer, in <- chan int) {
+	//
 	for num := range in {
 		buffer := make([]byte, 8)
 		binary.BigEndian.PutUint64(buffer, uint64(num))
